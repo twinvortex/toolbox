@@ -24,10 +24,35 @@ class CreateVhostCommand extends Command {
     $path = $input->getArgument('path');
     $server = $input->getArgument('server');
 
+    if(isset($path)) {
+      if(!is_dir($path)) {
+        mkdir($path, 0755, true);
+      }
+    }
+
     if($server == 'apache') {
       $output->writeln("Create vhost for apache!");
-      if($input->getOption('--with-host')) {
+      if(!file_exists(APACHE_SITES_PATH.'/'.$domain.'.conf')) {
+        $src[] = '{domain}';
+        $rpl[] = $domain;
+        $src[] = '{path}';
+        $rpl[] = $path;
+
+        $apacheData = str_replace($src, $rpl, file_get_contents(APACHE_TEMPLATE_FILE));
+        if(file_put_contents(APACHE_SITES_PATH.'/'.$domain.'.conf', $apacheData)) {
+          $output->writeln("Hostname added to apache: ".APACHE_SITES_PATH.'/'.$domain.'.conf');
+        } else {
+          $output->writeln("Could not write to file: ".APACHE_SITES_PATH.'/'.$domain.'.conf');
+        }
+
+      } else {
+        $output->writeln('Config file already exists.');
+      }
+      if($input->getOption('with-host')) {
           $output->writeln('Option to add to domain to hosts file enabled!');
+          if(file_put_contents(HOSTS_PATH, '127.0.0.1 '.$domain, FILE_APPEND)) {
+            $output->writeln('Added domain to hosts.');
+          }
       }
     } else if ($server == 'nginx') {
       $output->writeln("Create vhost for nginx");
