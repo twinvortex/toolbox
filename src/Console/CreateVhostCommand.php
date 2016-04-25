@@ -10,6 +10,9 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class CreateVhostCommand extends Command {
 
+  private $input;
+  private $output;
+
  protected function configure() {
     $this->setName('vhost:add')
         ->setDescription('Add a virtual host for apache or nginx')
@@ -20,6 +23,9 @@ class CreateVhostCommand extends Command {
   }
 
   protected function execute(InputInterface $input, OutputInterface $output) {
+    $this->input = $input;
+    $this->output = $output;
+
     $domain = $input->getArgument('domain');
     $path = $input->getArgument('path');
     $server = $input->getArgument('server');
@@ -31,33 +37,58 @@ class CreateVhostCommand extends Command {
     }
 
     if($server == 'apache') {
-      $output->writeln("Create vhost for apache!");
-      if(!file_exists(APACHE_SITES_PATH.'/'.$domain.'.conf')) {
-        $src[] = '{domain}';
-        $rpl[] = $domain;
-        $src[] = '{path}';
-        $rpl[] = $path;
-
-        $apacheData = str_replace($src, $rpl, file_get_contents(APACHE_TEMPLATE_FILE));
-        if(file_put_contents(APACHE_SITES_PATH.'/'.$domain.'.conf', $apacheData)) {
-          $output->writeln("Hostname added to apache: ".APACHE_SITES_PATH.'/'.$domain.'.conf');
-        } else {
-          $output->writeln("Could not write to file: ".APACHE_SITES_PATH.'/'.$domain.'.conf');
-        }
-
-      } else {
-        $output->writeln('Config file already exists.');
-      }
-      if($input->getOption('with-host')) {
-          $output->writeln('Option to add to domain to hosts file enabled!');
-          if(file_put_contents(HOSTS_PATH, '127.0.0.1 '.$domain, FILE_APPEND)) {
-            $output->writeln('Added domain to hosts.');
-          }
-      }
+      $this->addHost(APACHE_SITES_PATH, $domain, $server, $path);
     } else if ($server == 'nginx') {
-      $output->writeln("Create vhost for nginx");
+      $this->addHost(NGINX_SITES_PATH, $domain, $server, $path);
     } else {
       $output->writeln('Server not recognized');
+    }
+  }
+
+  /**
+   * Create virtual host files for apache or nginx with the option to add a host
+   * @param string $serverPath the path where the vhost files are located
+   * @param string $domain     the domain name
+   * @param string $server     the server type apache or nginx
+   * @param string $output     output text
+   */
+  private function addHost($serverPath, $domain, $server, $path) {
+
+    $src = array();
+    $rpl = array();
+
+    $this->output->writeln("Create vhost for $server!");
+
+    if(!file_exists($serverPath.'/'.$domain.'.conf')) {
+      $src[] = '{domain}';
+      $rpl[] = $domain;
+      $src[] = '{path}';
+      $rpl[] = $path;
+
+      if($server == 'apache')
+        $serverData = str_replace($src, $rpl, file_get_contents(APACHE_TEMPLATE_FILE));
+      elseif($server == 'nginx')
+        $serverData = str_replace($src, $rpl, file_get_contents(NGINX_SITES_PATH));
+      else
+        return;
+
+      if(file_put_contents($serverPath.'/'.$domain.'.conf', $serverData)) {
+        $this->output->writeln("Hostname added to $server: ".$serverPath.'/'.$domain.'.conf');
+      } else {
+        $this->output->writeln("Could not write to file: ".$serverPath.'/'.$domain.'.conf');
+      }
+
+    } else {
+      $this->output->writeln('Config file already exists.');
+    }
+
+    if($this->input->getOption('with-host')) {
+        $this->output->writeln('Option to add domain to hosts file enabled!');
+        if(file_put_contents(HOSTS_PATH, '127.0.0.1 '.$domain.PHP_EOL, FILE_APPEND)) {
+          $this->output->writeln('Added domain to hosts.');
+        } else {
+          $this->output->writeln('Could not write to the hosts file, use sudo.');
+        }
     }
   }
 
