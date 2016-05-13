@@ -7,6 +7,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Process\Process;
 
 class CreateVhostCommand extends Command {
 
@@ -19,7 +20,9 @@ class CreateVhostCommand extends Command {
         ->addArgument('domain', InputArgument::REQUIRED, 'Enter the domain name.')
         ->addArgument('path', InputArgument::REQUIRED, 'The path of your server files')
         ->addArgument('server', InputArgument::REQUIRED, 'The type of server')
-        ->addOption('--with-host', null, InputOption::VALUE_NONE, 'If this option is set we add host to /etc/hosts');
+        ->addArgument('ip', InputArgument::OPTIONAL, 'The default ip')
+        ->addOption('--with-host', null, InputOption::VALUE_NONE, 'If this option is set we add host to /etc/hosts')
+        ->addOption('--with-restart', null, InputOption::VALUE_NONE, 'Restart the server');
   }
 
   protected function execute(InputInterface $input, OutputInterface $output) {
@@ -29,6 +32,9 @@ class CreateVhostCommand extends Command {
     $domain = $input->getArgument('domain');
     $path = $input->getArgument('path');
     $server = $input->getArgument('server');
+    $ip = $input->getArgument('ip');
+    if(empty($ip))
+      $ip = '*';
 
     if(isset($path)) {
       if(!is_dir($path)) {
@@ -46,13 +52,14 @@ class CreateVhostCommand extends Command {
   }
 
   /**
-   * Create virtual host files for apache or nginx with the option to add a host
-   * @param string $serverPath the path where the vhost files are located
-   * @param string $domain     the domain name
-   * @param string $server     the server type apache or nginx
-   * @param string $output     output text
+   * Adding a virtual host files adding domain to /etc/hosts and restarting server
+   * @param string The path where the vhost files are
+   * @param string The domain name eg: local.dev
+   * @param string The type of server: apache / nginx
+   * @param string The path where the files are
+   * @param string The ip used in vhost
    */
-  private function addHost($serverPath, $domain, $server, $path) {
+  private function addHost($serverPath, $domain, $server, $path, $ip = '*') {
 
     $src = array();
     $rpl = array();
@@ -64,6 +71,15 @@ class CreateVhostCommand extends Command {
       $rpl[] = $domain;
       $src[] = '{path}';
       $rpl[] = $path;
+      $src[] = '{ip_address}';
+      $rpl[] = $ip;
+      $src[] = '{port}';
+      if($server == 'apache')
+        $rpl[] = APACHE_PORT;
+      else if($server == 'nginx')
+        $rpl[] = NGINX_PORT;
+      else 
+        $rpl[] = 80;
 
       if($server == 'apache')
         $serverData = str_replace($src, $rpl, file_get_contents(APACHE_TEMPLATE_FILE));
@@ -89,6 +105,26 @@ class CreateVhostCommand extends Command {
         } else {
           $this->output->writeln('Could not write to the hosts file, use sudo.');
         }
+    }
+
+    if($this->input->getOption('with-restart')) {
+      if($server == 'apache') {
+        $process = new Process("service apache2 restart");
+        $process->run();
+        if(!$process->isSuccessful())
+          throw new \RuntimeException($process->getErrorOutput());
+        else
+          $this->output->writeln('Apache server restarted!');
+      } else if($server == 'nginx') {
+          $process = new Process("service nginx restart");
+          $process->run();
+          if(!$process->isSuccessful())
+            throw new \RuntimeException($process->getErrorOutput());
+          else
+            $this->output('Nginx server restarted!');
+      } else {
+        $this->output->writeln('No action taken!');
+      }
     }
   }
 
