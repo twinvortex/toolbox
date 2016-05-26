@@ -84,7 +84,7 @@ class CreateVhostCommand extends Command {
       if($server == 'apache')
         $serverData = str_replace($src, $rpl, file_get_contents(APACHE_TEMPLATE_FILE));
       elseif($server == 'nginx')
-        $serverData = str_replace($src, $rpl, file_get_contents(NGINX_SITES_PATH));
+        $serverData = str_replace($src, $rpl, file_get_contents(NGNIX_TEMPLATE_FILE));
       else
         return;
 
@@ -121,7 +121,7 @@ class CreateVhostCommand extends Command {
           if(!$process->isSuccessful())
             throw new \RuntimeException($process->getErrorOutput());
           else
-            $this->output('Nginx server restarted!');
+            $this->output->writeln('Nginx server restarted!');
       } else {
         $this->output->writeln('No action taken!');
       }
