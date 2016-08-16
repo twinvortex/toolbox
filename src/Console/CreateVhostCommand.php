@@ -2,12 +2,12 @@
 
 namespace Vortex\Console;
 
+use Symfony\Component\Process\Process;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Process\Process;
 
 class CreateVhostCommand extends Command {
 
@@ -33,8 +33,13 @@ class CreateVhostCommand extends Command {
     $path = $input->getArgument('path');
     $server = $input->getArgument('server');
     $ip = $input->getArgument('ip');
-    if(empty($ip))
+    if(empty($ip) && $server == 'apache')
       $ip = '*';
+
+    if(empty($ip) && $server == 'nginx')
+      $ip = '';
+    else
+      $ip = $ip.':';
 
     if(isset($path)) {
       if(!is_dir($path)) {
@@ -78,7 +83,7 @@ class CreateVhostCommand extends Command {
         $rpl[] = APACHE_PORT;
       else if($server == 'nginx')
         $rpl[] = NGINX_PORT;
-      else 
+      else
         $rpl[] = 80;
 
       if($server == 'apache')

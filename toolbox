@@ -6,8 +6,10 @@ require __DIR__ . '/config.php';
 require __DIR__ . '/vendor/autoload.php';
 
 use Vortex\Console\CreateVhostCommand;
+use Vortex\Console\CreateBindHostCommand;
 use Symfony\Component\Console\Application;
 
 $app = new Application('Developer Toolbox', 1.0);
 $app->add(new CreateVhostCommand);
+$app->add(new CreateBindHostCommand);
 $app->run();
