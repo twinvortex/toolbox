@@ -12,7 +12,7 @@ Config.
 Ports and vhost paths can be changed in config.php for both apache and nginx.
 
 Example command:  
-`sudo php toolbox vhost:add --with-host --with-restart local.dev /var/www/local.dev apache`
+`sudo php toolbox vhost:add --with-host --with-restart local.test /var/www/local.test apache`
 
 Example command with IP:  
-`sudo php toolbox vhost:add --with-host --with-restart local3.dev /var/www/local3.dev apache "192.168.1.3"`
+`sudo php toolbox vhost:add --with-host --with-restart local3.test /var/www/local3.test apache "192.168.1.3"`
